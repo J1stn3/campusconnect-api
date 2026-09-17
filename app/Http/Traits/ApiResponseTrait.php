@@ -6,9 +6,6 @@ use Illuminate\Http\JsonResponse;
 
 trait ApiResponseTrait
 {
-    /**
-     * Return a successful JSON response.
-     */
     protected function successResponse(
         mixed $data = null,
         string $message = 'Success',
@@ -26,9 +23,13 @@ trait ApiResponseTrait
         return response()->json($response, $statusCode);
     }
 
-    /**
-     * Return an error JSON response.
-     */
+    protected function createdResponse(
+        mixed $data = null,
+        string $message = 'Created successfully.'
+    ): JsonResponse {
+        return $this->successResponse($data, $message, 201);
+    }
+
     protected function errorResponse(
         string $message = 'An error occurred.',
         int $statusCode = 400,
@@ -46,9 +47,6 @@ trait ApiResponseTrait
         return response()->json($response, $statusCode);
     }
 
-    /**
-     * Return a not found response.
-     */
     protected function notFoundResponse(string $resource = 'Resource'): JsonResponse
     {
         return $this->errorResponse("{$resource} not found.", 404);

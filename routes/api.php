@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,18 +28,15 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\V1\AuthController::class, 'login']);
 });
 
-// ─── Announcements (Public for Module 9 demo / Postman testing) ───────────────
-// Will be moved behind auth:sanctum when real auth is implemented later.
-Route::prefix('v1')->group(function () {
-    Route::apiResource('announcements', \App\Http\Controllers\Api\V1\AnnouncementController::class);
-});
-
 // ─── Protected Routes (Requires Authentication) ───────────────────────────────
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Auth — logout & profile
     Route::post('/auth/logout', [\App\Http\Controllers\Api\V1\AuthController::class, 'logout']);
     Route::get('/auth/me', [\App\Http\Controllers\Api\V1\AuthController::class, 'me']);
+
+    // Announcements
+    Route::apiResource('announcements', \App\Http\Controllers\Api\V1\AnnouncementController::class);
 
     // Events
     Route::apiResource('events', \App\Http\Controllers\Api\V1\EventController::class);
@@ -54,6 +50,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     // Notifications
     Route::get('/notifications', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
+    Route::get('/notifications/{id}', [\App\Http\Controllers\Api\V1\NotificationController::class, 'show']);
     Route::patch('/notifications/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
-
+    Route::delete('/notifications/{id}', [\App\Http\Controllers\Api\V1\NotificationController::class, 'destroy']);
 });
