@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +12,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
@@ -72,5 +73,25 @@ class User extends Authenticatable
     public function chatbotMessages(): HasMany
     {
         return $this->hasMany(ChatbotMessage::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isFaculty(): bool
+    {
+        return $this->role === 'faculty';
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->role === 'student';
+    }
+
+    public function isStaff(): bool
+    {
+        return in_array($this->role, ['admin', 'faculty'], true);
     }
 }

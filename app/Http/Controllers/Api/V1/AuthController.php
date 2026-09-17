@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -17,27 +17,27 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            'student_id' => 'nullable|string|max:20',
-            'role' => 'nullable|in:student,admin,faculty',
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+            'student_id' => ['nullable', 'string', 'max:20'],
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => $validated['password'],
+            'password' => Hash::make($validated['password']),
             'student_id' => $validated['student_id'] ?? null,
-            'role' => $validated['role'] ?? 'student',
+            'role' => 'student',
         ]);
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $this->issueToken($user);
 
         return $this->createdResponse([
-            'user' => $user,
+            'user' => $this->formatUser($user),
             'token' => $token,
-        ], 'Registered successfully.');
+            'token_type' => 'Bearer',
+        ], 'Account created successfully. Welcome to CampusConnect!');
     }
 
     public function login(Request $request): JsonResponse
@@ -50,28 +50,111 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            return $this->errorResponse(
+                'Invalid credentials. Please check your email and password.',
+                401
+            );
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $user->tokens()->delete();
+
+        $token = $this->issueToken($user);
 
         return $this->successResponse([
-            'user' => $user,
+            'user' => $this->formatUser($user),
             'token' => $token,
-        ], 'Logged in successfully.');
+            'token_type' => 'Bearer',
+        ], "Login successful. Welcome back, {$user->name}!");
     }
 
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
 
-        return $this->successResponse(null, 'Logged out successfully.');
+        return $this->successResponse(
+            null,
+            'Logged out successfully. Your session has been ended.'
+        );
+    }
+
+    public function logoutAll(Request $request): JsonResponse
+    {
+        $count = $request->user()->tokens()->count();
+        $request->user()->tokens()->delete();
+
+        return $this->successResponse(
+            null,
+            "Logged out from {$count} device(s) successfully."
+        );
     }
 
     public function me(Request $request): JsonResponse
     {
-        return $this->successResponse($request->user(), 'Profile retrieved successfully.');
+        return $this->successResponse(
+            $this->formatUser($request->user()),
+            'Profile retrieved successfully.'
+        );
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'student_id' => ['sometimes', 'nullable', 'string', 'max:20'],
+        ]);
+
+        $user->update($validated);
+
+        return $this->successResponse(
+            $this->formatUser($user->fresh()),
+            'Profile updated successfully.'
+        );
+    }
+
+    private function formatUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'student_id' => $user->student_id,
+            'role' => $user->role,
+            'created_at' => $user->created_at->toDateTimeString(),
+            'updated_at' => $user->updated_at->toDateTimeString(),
+        ];
+    }
+
+    private function issueToken(User $user): string
+    {
+        return $user->createToken(
+            'campusconnect-mobile',
+            $this->tokenAbilities($user),
+            now()->addDays(30)
+        )->plainTextToken;
+    }
+
+    private function tokenAbilities(User $user): array
+    {
+        if ($user->isAdmin()) {
+            return ['*'];
+        }
+
+        $abilities = [
+            'announcements:read',
+            'events:read',
+            'events:rsvp',
+            'schedule:read',
+            'notifications:read',
+            'notifications:write',
+            'chatbot:use',
+        ];
+
+        if ($user->isFaculty()) {
+            $abilities[] = 'events:write';
+        }
+
+        return $abilities;
     }
 }
