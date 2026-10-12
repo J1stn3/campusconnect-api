@@ -10,7 +10,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(['email' => 'admin@university.edu'], [
+        User::firstOrCreate(['email' => 'admin@university.edu'], [   
             'name' => 'System Administrator',
             'password' => Hash::make('admin@2025'),
             'role' => 'admin',

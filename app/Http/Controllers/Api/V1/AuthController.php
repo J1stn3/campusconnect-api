@@ -16,19 +16,31 @@ class AuthController extends Controller
 
     public function register(Request $request): JsonResponse
     {
+        if ($request->has('role') && is_string($request->input('role'))) {
+            $request->merge([
+                'role' => strtolower(trim($request->input('role'))),
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
+            'role' => ['nullable', 'string', 'in:student,admin,faculty'],
             'student_id' => ['nullable', 'string', 'max:20'],
         ]);
+
+        $role = $validated['role'] ?? 'student';
+        $studentId = ! empty($validated['student_id'])
+            ? $validated['student_id']
+            : $this->generateIdForRole($role);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'student_id' => $validated['student_id'] ?? null,
-            'role' => 'student',
+            'student_id' => $studentId,
+            'role' => $role,
         ]);
 
         $token = $this->issueToken($user);
@@ -157,4 +169,48 @@ class AuthController extends Controller
 
         return $abilities;
     }
+
+    private function generateIdForRole(string $role): string
+    {
+        if ($role === 'admin') {
+            $existing = User::where('student_id', 'like', 'ADM-%')
+                ->pluck('student_id')
+                ->flip();
+
+            $seq = 1;
+            while ($existing->has(sprintf('ADM-%05d', $seq))) {
+                $seq++;
+            }
+
+            return sprintf('ADM-%05d', $seq);
+        }
+
+        if ($role === 'faculty') {
+            $existing = User::where('student_id', 'like', 'FAC-%')
+                ->pluck('student_id')
+                ->flip();
+
+            $seq = 1;
+            while ($existing->has(sprintf('FAC-%05d', $seq))) {
+                $seq++;
+            }
+
+            return sprintf('FAC-%05d', $seq);
+        }
+
+        // Student role
+        $year = date('Y');
+        $prefix = "{$year}-";
+        $existing = User::where('student_id', 'like', "{$prefix}%")
+            ->pluck('student_id')
+            ->flip();
+
+        $seq = 1;
+        while ($existing->has(sprintf('%s-%05d', $year, $seq))) {
+            $seq++;
+        }
+
+        return sprintf('%s-%05d', $year, $seq);
+    }
 }
+

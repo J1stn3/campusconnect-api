@@ -44,7 +44,7 @@ class Module11AuthenticationTest extends TestCase
             'password' => 'SecurePass123!',
             'password_confirmation' => 'SecurePass123!',
             'student_id' => '2025-00001',
-            'role' => 'admin',
+            'role' => 'student',
         ]);
 
         $registerResponse
