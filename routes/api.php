@@ -37,7 +37,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{id}', [EventController::class, 'show']);
-    Route::post('/events/{event}/rsvp', [EventController::class, 'rsvp']);
+    Route::post('/events/{id}/rsvp', [EventController::class, 'rsvp']);
 
     Route::get('/schedules', [ScheduleController::class, 'index']);
 
@@ -47,6 +47,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
     Route::post('/chatbot', [ChatbotController::class, 'chat']);
+    Route::get('/chatbot/history', [ChatbotController::class, 'history']);
 
     Route::middleware(EnsureIsAdmin::class)->group(function () {
         Route::post('/announcements', [AnnouncementController::class, 'store']);

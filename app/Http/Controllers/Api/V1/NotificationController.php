@@ -15,7 +15,7 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Notification::where('user_id', $user->id);
+        $query = Notification::where('user_id', $user->id); // IDOR protection
 
         if ($request->boolean('unread')) {
             $query->unread();
@@ -25,8 +25,7 @@ class NotificationController extends Controller
             $query->byType($request->query('type'));
         }
 
-        $notifications = $query
-            ->orderBy('is_read')
+        $notifications = $query->orderBy('is_read')
             ->orderByDesc('created_at')
             ->get();
 
@@ -35,43 +34,43 @@ class NotificationController extends Controller
         return $this->successResponse([
             'unread_count' => $unreadCount,
             'notifications' => $notifications,
-        ], 'Notifications retrieved successfully.');
+        ], 'Notifications retrieved.');
     }
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $notification = Notification::where('user_id', $request->user()->id)->find($id);
+        $n = Notification::where('user_id', $request->user()->id)->find($id);
 
-        if (! $notification) {
+        if (! $n) {
             return $this->notFoundResponse('Notification');
         }
 
-        return $this->successResponse($notification, 'Notification retrieved successfully.');
+        return $this->successResponse($n, 'Notification retrieved.');
     }
 
     public function markAsRead(Request $request, string $id): JsonResponse
     {
-        $notification = Notification::where('user_id', $request->user()->id)->find($id);
+        $n = Notification::where('user_id', $request->user()->id)->find($id);
 
-        if (! $notification) {
+        if (! $n) {
             return $this->notFoundResponse('Notification');
         }
 
-        $notification->markAsRead();
+        $n->markAsRead();
 
-        return $this->successResponse($notification->fresh(), 'Notification marked as read.');
+        return $this->successResponse($n->fresh(), 'Notification marked as read.');
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $notification = Notification::where('user_id', $request->user()->id)->find($id);
+        $n = Notification::where('user_id', $request->user()->id)->find($id);
 
-        if (! $notification) {
+        if (! $n) {
             return $this->notFoundResponse('Notification');
         }
 
-        $notification->delete();
+        $n->delete();
 
-        return $this->successResponse(null, 'Notification deleted successfully.');
+        return $this->successResponse(null, 'Notification deleted.');
     }
 }

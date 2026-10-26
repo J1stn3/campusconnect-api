@@ -7,6 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Schedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
@@ -21,18 +22,29 @@ class ScheduleController extends Controller
             $query->forDay(ucfirst(strtolower($request->query('day'))));
         }
 
-        $schedules = $query
-            ->orderByRaw("FIELD(day,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
-            ->orderBy('time_start')
-            ->get();
+        if (DB::getDriverName() === 'sqlite') {
+            $query->orderByRaw("CASE day 
+                WHEN 'Monday' THEN 1 
+                WHEN 'Tuesday' THEN 2 
+                WHEN 'Wednesday' THEN 3 
+                WHEN 'Thursday' THEN 4 
+                WHEN 'Friday' THEN 5 
+                WHEN 'Saturday' THEN 6 
+                WHEN 'Sunday' THEN 7 
+                ELSE 8 END");
+        } else {
+            $query->orderByRaw("FIELD(day,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')");
+        }
+
+        $schedules = $query->orderBy('time_start')->get();
 
         $grouped = $schedules->groupBy('day');
         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-        $weeklySchedule = collect($days)->map(fn ($day) => [
-            'day' => $day,
-            'classes' => $grouped->get($day, collect())->values(),
+        $weekly = collect($days)->map(fn ($d) => [
+            'day' => $d,
+            'classes' => $grouped->get($d, collect())->values(),
         ]);
+        $unique = $schedules->unique('subject_code');
 
         return $this->successResponse([
             'student' => [
@@ -40,11 +52,13 @@ class ScheduleController extends Controller
                 'name' => $user->name,
                 'student_id' => $user->student_id,
             ],
-            'weekly_schedule' => $weeklySchedule,
+            'weekly_schedule' => $weekly,
             'summary' => [
-                'total_subjects' => $schedules->unique('subject_code')->count(),
-                'total_units' => $schedules->unique('subject_code')->sum('units'),
+                'total_subjects' => $unique->count(),
+                'total_units' => $unique->sum('units'),
+                'school_year' => '2025-2026',
+                'semester' => '1st',
             ],
-        ], 'Schedule retrieved successfully.');
+        ], 'Schedule retrieved.');
     }
 }

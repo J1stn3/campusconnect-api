@@ -37,6 +37,7 @@ class Event extends Model
     ];
 
     protected $appends = [
+        'rsvp_count',
         'seats_available',
         'is_full',
     ];
@@ -58,6 +59,11 @@ class Event extends Model
             ->withTimestamps();
     }
 
+    public function getRsvpCountAttribute(): int
+    {
+        return $this->rsvps()->count();
+    }
+
     public function getSeatsAvailableAttribute(): int
     {
         return max(0, $this->capacity - $this->rsvps()->count());
@@ -72,5 +78,15 @@ class Event extends Model
     {
         return $query->where('status', 'upcoming')
             ->where('date', '>=', now()->toDateString());
+    }
+
+    public function scopeByCategory($query, string $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    public function scopeFree($query)
+    {
+        return $query->where('is_free', true);
     }
 }

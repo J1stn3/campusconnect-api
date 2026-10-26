@@ -13,52 +13,67 @@ class EventController extends Controller
 {
     use ApiResponseTrait;
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $events = Event::with('organizer:id,name,role')
-            ->orderBy('date')
-            ->get();
+        $query = Event::with('organizer:id,name,role');
 
-        return $this->successResponse($events, 'Events retrieved successfully.');
-    }
+        if ($request->has('category')) {
+            $query->byCategory($request->query('category'));
+        }
 
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'location' => 'required|string|max:255',
-            'date' => 'required|date',
-            'time_start' => 'required',
-            'time_end' => 'required',
-            'category' => 'required|string|max:100',
-            'status' => 'nullable|in:upcoming,ongoing,past,cancelled',
-            'capacity' => 'nullable|integer|min:1',
-            'is_free' => 'nullable|boolean',
-            'contact_email' => 'nullable|email',
-            'image_url' => 'nullable|string',
-            'registration_deadline' => 'nullable|date',
-        ]);
+        if ($request->has('status')) {
+            $query->where('status', $request->query('status'));
+        }
 
-        $event = Event::create([
-            'user_id' => $request->user()->id,
-            ...$validated,
-        ]);
+        if ($request->boolean('free')) {
+            $query->free();
+        }
 
-        $event->load('organizer:id,name,role');
+        $events = $query->orderBy('date')->get();
+        $events->each(fn ($e) => $e->append(['rsvp_count', 'seats_available', 'is_full']));
 
-        return $this->createdResponse($event, 'Event created successfully.');
+        return $this->successResponse($events, 'Events retrieved.');
     }
 
     public function show(string $id): JsonResponse
     {
-        $event = Event::with(['organizer:id,name,role', 'attendees:id,name,role'])->find($id);
+        $event = Event::with('organizer:id,name,role')->find($id);
 
         if (! $event) {
             return $this->notFoundResponse('Event');
         }
 
-        return $this->successResponse($event, 'Event retrieved successfully.');
+        $event->append(['rsvp_count', 'seats_available', 'is_full']);
+
+        return $this->successResponse($event, 'Event retrieved.');
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'location' => ['required', 'string', 'max:255'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'time_start' => ['required', 'date_format:H:i:s,H:i'],
+            'time_end' => ['required', 'date_format:H:i:s,H:i', 'after:time_start'],
+            'category' => ['required', 'string', 'max:100'],
+            'capacity' => ['required', 'integer', 'min:1'],
+            'is_free' => ['nullable', 'boolean'],
+            'contact_email' => ['nullable', 'email'],
+            'registration_deadline' => ['nullable', 'date', 'before_or_equal:date'],
+        ]);
+
+        $event = Event::create(array_merge($validated, [
+            'user_id' => $request->user()->id,
+            'status' => 'upcoming',
+            'is_free' => $validated['is_free'] ?? true,
+        ]));
+
+        $event->load('organizer:id,name,role');
+        $event->append(['rsvp_count', 'seats_available', 'is_full']);
+
+        return $this->createdResponse($event, 'Event created.');
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -69,26 +84,24 @@ class EventController extends Controller
             return $this->notFoundResponse('Event');
         }
 
-        $validated = $request->validate([
+        $v = $request->validate([
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
             'location' => 'sometimes|string|max:255',
             'date' => 'sometimes|date',
-            'time_start' => 'sometimes',
-            'time_end' => 'sometimes',
+            'time_start' => 'sometimes|date_format:H:i:s,H:i',
+            'time_end' => 'sometimes|date_format:H:i:s,H:i',
             'category' => 'sometimes|string|max:100',
-            'status' => 'sometimes|in:upcoming,ongoing,past,cancelled',
             'capacity' => 'sometimes|integer|min:1',
+            'status' => 'sometimes|in:upcoming,ongoing,past,cancelled',
             'is_free' => 'sometimes|boolean',
-            'contact_email' => 'sometimes|nullable|email',
-            'image_url' => 'sometimes|nullable|string',
-            'registration_deadline' => 'sometimes|nullable|date',
         ]);
 
-        $event->update($validated);
+        $event->update($v);
         $event->load('organizer:id,name,role');
+        $event->append(['rsvp_count', 'seats_available', 'is_full']);
 
-        return $this->successResponse($event, 'Event updated successfully.');
+        return $this->successResponse($event, 'Event updated.');
     }
 
     public function destroy(string $id): JsonResponse
@@ -102,44 +115,55 @@ class EventController extends Controller
         $title = $event->title;
         $event->delete();
 
-        return $this->successResponse(null, "\"{$title}\" deleted successfully.");
+        return $this->successResponse(null, "\"{$title}\" deleted.");
     }
 
-    public function rsvp(Request $request, string $event): JsonResponse
+    public function rsvp(Request $request, string $id): JsonResponse
     {
-        $eventModel = Event::find($event);
+        $event = Event::find($id);
 
-        if (! $eventModel) {
+        if (! $event) {
             return $this->notFoundResponse('Event');
         }
 
         $user = $request->user();
 
+        // CHECK 1 — Duplicate RSVP
         $existing = EventRsvp::where('user_id', $user->id)
-            ->where('event_id', $eventModel->id)
+            ->where('event_id', $event->id)
             ->first();
 
         if ($existing) {
-            return $this->errorResponse('Already RSVPed to this event.', 409);
+            return $this->errorResponse('You have already RSVPed to this event.', 409);
         }
 
-        if ($eventModel->is_full) {
-            return $this->errorResponse('Event is fully booked.', 409);
+        // CHECK 2 — Capacity
+        if ($event->is_full) {
+            return $this->errorResponse('This event is fully booked.', 409);
         }
 
+        // CHECK 3 — Registration deadline (null check required)
+        if ($event->registration_deadline && now()->gt($event->registration_deadline->endOfDay())) {
+            return $this->errorResponse('Registration deadline has passed.', 422);
+        }
+
+        // All checks passed — create RSVP record
         $rsvp = EventRsvp::create([
             'user_id' => $user->id,
-            'event_id' => $eventModel->id,
+            'event_id' => $event->id,
             'status' => 'confirmed',
             'rsvp_at' => now(),
         ]);
 
         return $this->createdResponse([
             'rsvp_id' => $rsvp->id,
-            'event_title' => $eventModel->title,
-            'event_date' => $eventModel->date->toDateString(),
+            'event_id' => $event->id,
+            'event_title' => $event->title,
+            'event_date' => $event->date->toDateString(),
+            'event_location' => $event->location,
             'user_name' => $user->name,
             'status' => 'confirmed',
-        ], "RSVP confirmed for \"{$eventModel->title}\".");
+            'rsvp_at' => $rsvp->rsvp_at->toDateTimeString(),
+        ], "RSVP confirmed for \"{$event->title}\".");
     }
 }

@@ -24,8 +24,7 @@ class AnnouncementController extends Controller
             $query->pinned();
         }
 
-        $announcements = $query
-            ->orderByDesc('is_pinned')
+        $announcements = $query->orderByDesc('is_pinned')
             ->orderByDesc('created_at')
             ->get();
 
@@ -35,17 +34,22 @@ class AnnouncementController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'body' => 'required|string',
-            'category' => 'required|string|max:100',
-            'priority' => 'nullable|in:low,medium,high',
-            'is_pinned' => 'nullable|boolean',
-            'expires_at' => 'nullable|date|after:now',
+            'title' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string'],
+            'category' => ['required', 'string', 'max:100'],
+            'priority' => ['nullable', 'in:low,medium,high'],
+            'is_pinned' => ['nullable', 'boolean'],
+            'expires_at' => ['nullable', 'date', 'after:now'],
         ]);
 
         $announcement = Announcement::create([
-            'user_id' => $request->user()->id,
-            ...$validated,
+            'user_id' => $request->user()->id, // ALWAYS from token — never from body
+            'title' => $validated['title'],
+            'body' => $validated['body'],
+            'category' => $validated['category'],
+            'priority' => $validated['priority'] ?? 'medium',
+            'is_pinned' => $validated['is_pinned'] ?? false,
+            'expires_at' => $validated['expires_at'] ?? null,
         ]);
 
         $announcement->load('user:id,name,role');
@@ -55,24 +59,24 @@ class AnnouncementController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $announcement = Announcement::with('user:id,name,role')->find($id);
+        $a = Announcement::with('user:id,name,role')->find($id);
 
-        if (! $announcement) {
+        if (! $a) {
             return $this->notFoundResponse('Announcement');
         }
 
-        return $this->successResponse($announcement, 'Announcement retrieved successfully.');
+        return $this->successResponse($a, 'Announcement retrieved.');
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $announcement = Announcement::find($id);
+        $a = Announcement::find($id);
 
-        if (! $announcement) {
+        if (! $a) {
             return $this->notFoundResponse('Announcement');
         }
 
-        $validated = $request->validate([
+        $v = $request->validate([
             'title' => 'sometimes|string|max:255',
             'body' => 'sometimes|string',
             'category' => 'sometimes|string|max:100',
@@ -81,23 +85,23 @@ class AnnouncementController extends Controller
             'expires_at' => 'sometimes|nullable|date',
         ]);
 
-        $announcement->update($validated);
-        $announcement->load('user:id,name,role');
+        $a->update($v);
+        $a->load('user:id,name,role');
 
-        return $this->successResponse($announcement, 'Announcement updated successfully.');
+        return $this->successResponse($a, 'Announcement updated.');
     }
 
     public function destroy(string $id): JsonResponse
     {
-        $announcement = Announcement::find($id);
+        $a = Announcement::find($id);
 
-        if (! $announcement) {
+        if (! $a) {
             return $this->notFoundResponse('Announcement');
         }
 
-        $title = $announcement->title;
-        $announcement->delete();
+        $title = $a->title;
+        $a->delete();
 
-        return $this->successResponse(null, "\"{$title}\" deleted successfully.");
+        return $this->successResponse(null, "\"{$title}\" deleted.");
     }
 }

@@ -1,0 +1,1116 @@
+{
+	"info": {
+		"_postman_id": "c8a49c2d-93e1-482a-a9e2-5402422ff2e4",
+		"name": "CampusConnect - Module 12 REST API",
+		"description": "Comprehensive automated test suite for Module 12: Building & Testing REST API Endpoints in CampusConnect.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "faculty_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "student_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "announcement_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "event_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. Authentication (Token Setup)",
+			"item": [
+				{
+					"name": "Login as Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Save admin_token', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.collectionVariables.set('admin_token', json.data.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@university.edu\",\n    \"password\": \"admin@2025\"\n}"
+						},
+						"url": "{{base_url}}/auth/login"
+					}
+				},
+				{
+					"name": "Login as Faculty",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Save faculty_token', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.collectionVariables.set('faculty_token', json.data.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"msantos@university.edu\",\n    \"password\": \"faculty@2025\"\n}"
+						},
+						"url": "{{base_url}}/auth/login"
+					}
+				},
+				{
+					"name": "Login as Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Save student_token', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.collectionVariables.set('student_token', json.data.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"student@university.edu\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": "{{base_url}}/auth/login"
+					}
+				}
+			]
+		},
+		{
+			"name": "Part A - Announcements (Checkpoint A)",
+			"item": [
+				{
+					"name": "1. GET All Active Announcements",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Returns seeded announcements with user relation', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.be.an('array');",
+									"    if (json.data.length > 0) {",
+									"        pm.expect(json.data[0]).to.have.property('user');",
+									"        pm.expect(json.data[0].user).to.have.property('name');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/announcements"
+					}
+				},
+				{
+					"name": "2. GET Filter by Category",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Only Academic announcements returned', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    json.data.forEach(a => pm.expect(a.category).to.equal('Academic'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/announcements?category=Academic"
+					}
+				},
+				{
+					"name": "3. GET Pinned Announcements Only",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Only pinned announcements returned', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    json.data.forEach(a => pm.expect(a.is_pinned).to.be.true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/announcements?pinned=true"
+					}
+				},
+				{
+					"name": "4. POST Announcement as Student (Forbidden)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 403 Forbidden', () => {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"pm.test('EnsureIsAdmin blocks student', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.false;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Student Test Announcement\",\n    \"body\": \"This should be blocked.\",\n    \"category\": \"Academic\"\n}"
+						},
+						"url": "{{base_url}}/announcements"
+					}
+				},
+				{
+					"name": "5. POST Announcement as Admin (Created)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201 Created', () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test('Save announcement_id for chained tests', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.have.property('id');",
+									"    pm.collectionVariables.set('announcement_id', json.data.id);",
+									"    console.log('Saved announcement_id:', json.data.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Module 12 Test Announcement\",\n    \"body\": \"Created during activity.\",\n    \"category\": \"Academic\",\n    \"priority\": \"medium\",\n    \"is_pinned\": false\n}"
+						},
+						"url": "{{base_url}}/announcements"
+					}
+				},
+				{
+					"name": "6. GET Single Announcement as Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Correct announcement data returned', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data.title).to.equal('Module 12 Test Announcement');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/announcements/{{announcement_id}}"
+					}
+				},
+				{
+					"name": "7. PUT Update Announcement as Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Title updated successfully', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data.title).to.equal('Updated Module 12 Announcement');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+						"method": "PUT",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Module 12 Announcement\"\n}"
+						},
+						"url": "{{base_url}}/announcements/{{announcement_id}}"
+					}
+				},
+				{
+					"name": "8. DELETE Announcement as Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Deletion confirmed in response', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+						"method": "DELETE",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/announcements/{{announcement_id}}"
+					}
+				},
+				{
+					"name": "9. GET Deleted Announcement as Student (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 404 Not Found', () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"pm.test('Confirms deletion', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.false;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/announcements/{{announcement_id}}"
+					}
+				}
+			]
+		},
+		{
+			"name": "Part B - Events & RSVP (Checkpoint B)",
+			"item": [
+				{
+					"name": "1. GET All Events",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Includes rsvp_count, seats_available, is_full', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.be.an('array');",
+									"    if (json.data.length > 0) {",
+									"        pm.expect(json.data[0]).to.have.property('rsvp_count');",
+									"        pm.expect(json.data[0]).to.have.property('seats_available');",
+									"        pm.expect(json.data[0]).to.have.property('is_full');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/events"
+					}
+				},
+				{
+					"name": "2. POST Event as Student (Forbidden)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 403 Forbidden', () => {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Student Event\",\n    \"description\": \"Student trying to create.\",\n    \"location\": \"Hall\",\n    \"date\": \"2026-12-20\",\n    \"time_start\": \"09:00:00\",\n    \"time_end\": \"17:00:00\",\n    \"category\": \"Academic\",\n    \"capacity\": 50\n}"
+						},
+						"url": "{{base_url}}/events"
+					}
+				},
+				{
+					"name": "3. POST Event as Faculty (Created)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201 Created', () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test('Save event_id for chain', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.collectionVariables.set('event_id', json.data.id);",
+									"    console.log('Saved event_id:', json.data.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{faculty_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Module 12 Test Event\",\n    \"description\": \"Test event.\",\n    \"location\": \"IT Auditorium\",\n    \"date\": \"2026-12-20\",\n    \"time_start\": \"09:00:00\",\n    \"time_end\": \"17:00:00\",\n    \"category\": \"Academic\",\n    \"capacity\": 50\n}"
+						},
+						"url": "{{base_url}}/events"
+					}
+				},
+				{
+					"name": "4. GET Single Event with Computed Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Response has computed attributes', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.have.property('rsvp_count');",
+									"    pm.expect(json.data).to.have.property('seats_available');",
+									"    pm.expect(json.data).to.have.property('is_full');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/events/{{event_id}}"
+					}
+				},
+				{
+					"name": "5. POST RSVP to Event (Created)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 201 Created', () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test('RSVP confirmed structure', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.have.property('rsvp_id');",
+									"    pm.expect(json.data.status).to.equal('confirmed');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/events/1/rsvp"
+					}
+				},
+				{
+					"name": "6. POST Duplicate RSVP (409 Conflict)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 409 Conflict', () => {",
+									"    pm.response.to.have.status(409);",
+									"});",
+									"pm.test('Duplicate error message', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.message).to.equal('You have already RSVPed to this event.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/events/1/rsvp"
+					}
+				},
+				{
+					"name": "7. PUT Update Event as Faculty",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Title updated', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.data.title).to.equal('Updated Module 12 Event Title');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{faculty_token}}", "type": "string" }] },
+						"method": "PUT",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Module 12 Event Title\"\n}"
+						},
+						"url": "{{base_url}}/events/{{event_id}}"
+					}
+				},
+				{
+					"name": "8. DELETE Event as Faculty",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{faculty_token}}", "type": "string" }] },
+						"method": "DELETE",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/events/{{event_id}}"
+					}
+				}
+			]
+		},
+		{
+			"name": "Part C - Schedule (Checkpoint C)",
+			"item": [
+				{
+					"name": "1. GET Schedule as Student (7 day buckets)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Has 7 day buckets, Monday first', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data.weekly_schedule).to.have.lengthOf(7);",
+									"    pm.expect(json.data.weekly_schedule[0].day).to.equal('Monday');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/schedules"
+					}
+				},
+				{
+					"name": "2. GET Schedule filtered by Day (Monday)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Returns Monday classes', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    const monday = json.data.weekly_schedule.find(d => d.day === 'Monday');",
+									"    pm.expect(monday.classes.length).to.be.greaterThan(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/schedules?day=Monday"
+					}
+				},
+				{
+					"name": "3. GET Schedule as Admin (Empty buckets)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Admin sees 7 empty day buckets', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data.weekly_schedule).to.have.lengthOf(7);",
+									"    pm.expect(json.data.summary.total_subjects).to.equal(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/schedules"
+					}
+				}
+			]
+		},
+		{
+			"name": "Part D - Notifications (Checkpoint D)",
+			"item": [
+				{
+					"name": "1. GET All Notifications",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Contains unread_count and notifications', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.have.property('unread_count');",
+									"    pm.expect(json.data.notifications).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications"
+					}
+				},
+				{
+					"name": "2. GET Unread Notifications Only",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Only unread notifications returned', () => {",
+									"    const json = pm.response.json();",
+									"    json.data.notifications.forEach(n => pm.expect(n.is_read).to.be.false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications?unread=true"
+					}
+				},
+				{
+					"name": "3. GET Notifications Filtered by Type",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Only warning type returned', () => {",
+									"    const json = pm.response.json();",
+									"    json.data.notifications.forEach(n => pm.expect(n.type).to.equal('warning'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications?type=warning"
+					}
+				},
+				{
+					"name": "4. PATCH Mark Notification as Read",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('is_read is true and read_at is set', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.data.is_read).to.be.true;",
+									"    pm.expect(json.data.read_at).to.not.be.null;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "PATCH",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications/1/read"
+					}
+				},
+				{
+					"name": "5. GET Unread Notifications (Count decreased)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications?unread=true"
+					}
+				},
+				{
+					"name": "6. DELETE Notification",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "DELETE",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications/1"
+					}
+				},
+				{
+					"name": "7. GET Deleted Notification (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 404 Not Found', () => {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications/1"
+					}
+				},
+				{
+					"name": "8. IDOR Security Test: Admin Accessing Student Notification",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 404 Not Found (IDOR prevented)', () => {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"pm.test('Admin cannot view student notification', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.false;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/notifications/2"
+					}
+				}
+			]
+		},
+		{
+			"name": "Part E - Chatbot (Checkpoint E)",
+			"item": [
+				{
+					"name": "1. POST Chatbot Greeting",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Greeting response and conversation_id generated', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data.bot_name).to.equal('Campus');",
+									"    pm.expect(json.data).to.have.property('conversation_id');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Hello\"\n}"
+						},
+						"url": "{{base_url}}/chatbot"
+					}
+				},
+				{
+					"name": "2. POST Chatbot Ask Enrollment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Contains enrollment info', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.data.bot_response).to.include('Enrollment');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"When is enrollment?\"\n}"
+						},
+						"url": "{{base_url}}/chatbot"
+					}
+				},
+				{
+					"name": "3. POST Chatbot Ask Events",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Contains events info', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.data.bot_response).to.include('Upcoming events');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Tell me about events\"\n}"
+						},
+						"url": "{{base_url}}/chatbot"
+					}
+				},
+				{
+					"name": "4. GET Chatbot History",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Returns chat history', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.success).to.be.true;",
+									"    pm.expect(json.data).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/chatbot/history"
+					}
+				},
+				{
+					"name": "5. POST Grouping with Custom Conversation ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 200', () => {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('Uses supplied conversation_id', () => {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.data.conversation_id).to.equal('test_001');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{student_token}}", "type": "string" }] },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"What is the enrollment deadline?\",\n    \"conversation_id\": \"test_001\"\n}"
+						},
+						"url": "{{base_url}}/chatbot"
+					}
+				}
+			]
+		}
+	]
+}

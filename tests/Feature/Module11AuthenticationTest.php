@@ -160,6 +160,7 @@ class Module11AuthenticationTest extends TestCase
             'time_start' => '09:00',
             'time_end' => '11:00',
             'category' => 'Seminar',
+            'capacity' => 100,
         ];
 
         // 11. Faculty can create events.
